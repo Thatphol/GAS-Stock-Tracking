@@ -167,11 +167,7 @@ frontend/backend ใช้ข้อมูลนี้เพื่อทำ:
 
 ## Development Workflow
 
-แก้ไฟล์ใน local workspace:
-
-```bash
-C:\Users\Thattaphol\Desktop\Workspace\Stock-Tracking
-```
+แก้ไฟล์ใน workspace ของโปรเจกต์นี้ แล้วตรวจว่าไฟล์ที่เปลี่ยนตรงกับ scope ที่ต้องการก่อน push
 
 หลังแก้ไฟล์ Apps Script/HTML/CSS ต้อง push ขึ้น Google Apps Script:
 

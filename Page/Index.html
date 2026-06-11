@@ -1,0 +1,1961 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+  <?!= include('Page/Style'); ?>
+</head>
+
+<body>
+  <div class="app">
+
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">ST</div>
+        <div>
+          <h2>Stock Tracker</h2>
+          <p>Personal Portfolio</p>
+        </div>
+      </div>
+
+      <nav>
+        <button class="nav-item active" type="button" data-target="dashboardSection">Dashboard</button>
+        <button class="nav-item" type="button" data-target="holdingsSection">Holdings</button>
+        <button class="nav-item" type="button" data-target="dailyTrackingSection">Daily Tracking</button>
+        <button class="nav-item" type="button" data-target="monthlySummarySection">Monthly Summary</button>
+      </nav>
+
+      <div class="monthly-box">
+        <div class="monthly-title">Monthly Summary</div>
+        <div class="monthly-period" id="monthlyPeriod">-</div>
+
+        <div class="monthly-row">
+          <span>Month Value</span>
+          <strong id="monthlyTotalTHB">-</strong>
+        </div>
+
+        <div class="monthly-row">
+          <span>Month P/L</span>
+          <strong id="monthlyProfitTHB">-</strong>
+        </div>
+
+        <div class="monthly-row">
+          <span>MoM Value</span>
+          <strong id="monthlyMoM">-</strong>
+        </div>
+
+        <div class="monthly-row">
+          <span>Days Tracked</span>
+          <strong id="monthlyDays">-</strong>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <p>Google Sheets Database</p>
+        <span>Apps Script Web App</span>
+      </div>
+    </aside>
+
+    <main class="main">
+
+      <header class="topbar">
+        <div>
+          <h1>My Stock Tracking</h1>
+          <p>Portfolio · Daily Tracking · Google Sheets</p>
+        </div>
+
+        <button class="refresh-button" onclick="loadData()">Refresh</button>
+      </header>
+
+      <section class="filter-panel">
+        <div class="filter-field">
+          <label for="filterStartDate">Start Date</label>
+          <input type="date" id="filterStartDate">
+        </div>
+
+        <div class="filter-field">
+          <label for="filterEndDate">End Date</label>
+          <input type="date" id="filterEndDate">
+        </div>
+
+        <div class="filter-field">
+          <label for="filterApplication">Application</label>
+          <div class="multi-select" id="appMultiSelect">
+            <button class="multi-select-button" type="button" onclick="toggleAppDropdown()">
+              <span id="appMultiSelectLabel">All applications</span>
+              <span class="multi-select-arrow">⌄</span>
+            </button>
+            <div class="multi-select-menu" id="appMultiSelectMenu"></div>
+          </div>
+        </div>
+
+        <div class="filter-field">
+          <label for="filterStockName">Stock Name</label>
+          <div class="multi-select" id="stockMultiSelect">
+            <button class="multi-select-button" type="button" onclick="toggleStockDropdown()">
+              <span id="stockMultiSelectLabel">All stocks</span>
+              <span class="multi-select-arrow">⌄</span>
+            </button>
+            <div class="multi-select-menu" id="stockMultiSelectMenu"></div>
+          </div>
+        </div>
+
+        <div class="filter-actions">
+          <button class="secondary-button" type="button" onclick="resetFilters()">Reset</button>
+        </div>
+      </section>
+
+      <section class="cards page-section" id="dashboardSection">
+        <div class="card">
+          <p>Total Value THB</p>
+          <h2 id="totalValueTHB">-</h2>
+          <div class="dod" id="dodTotalTHB">-</div>
+        </div>
+
+        <div class="card">
+          <p>Total Value USD</p>
+          <h2 id="totalValueUSD">-</h2>
+          <div class="dod" id="dodTotalUSD">-</div>
+        </div>
+
+        <div class="card">
+          <p>Total Profit / Loss</p>
+          <h2 id="totalProfitTHB">-</h2>
+          <div class="dod" id="dodProfitTHB">-</div>
+        </div>
+
+        <div class="card">
+          <p>Profit / Loss %</p>
+          <h2 id="totalProfitPercent">-</h2>
+          <div class="dod muted-dod" id="dodDateRange">Latest Tracking -</div>
+        </div>
+      </section>
+
+      <section class="cards insight-cards">
+        <div class="card">
+          <p>Total Cost</p>
+          <h2 id="totalCostTHB">-</h2>
+          <div class="dod muted-dod">Cost basis</div>
+        </div>
+
+        <div class="card">
+          <p>Unrealized P&amp;L</p>
+          <h2 id="unrealizedPLTHB">-</h2>
+          <div class="dod" id="unrealizedPLPercent">-</div>
+        </div>
+
+        <div class="card">
+          <p>Daily Change</p>
+          <h2 id="dailyChangeTHB">-</h2>
+          <div class="dod" id="dailyChangePercent">-</div>
+        </div>
+
+        <div class="card">
+          <p>Best Performer</p>
+          <h2 id="bestPerformer">-</h2>
+          <div class="dod" id="bestPerformerValue">-</div>
+        </div>
+
+        <div class="card">
+          <p>Worst Performer</p>
+          <h2 id="worstPerformer">-</h2>
+          <div class="dod" id="worstPerformerValue">-</div>
+        </div>
+      </section>
+
+      <section class="goal-grid">
+        <div class="panel goal-panel">
+          <div class="panel-header">
+            <div>
+              <h3>Total Cost Goal</h3>
+              <p>From Goal - Plan sheet</p>
+            </div>
+            <strong id="totalCostGoalLabel">-</strong>
+          </div>
+
+          <div class="goal-progress">
+            <div class="goal-progress-fill" id="totalCostGoalFill"></div>
+          </div>
+          <div class="goal-meta">
+            <span id="totalCostGoalProgress">-</span>
+            <span id="totalCostGoalRemaining">-</span>
+          </div>
+        </div>
+
+        <div class="panel goal-panel">
+          <div class="panel-header">
+            <div>
+              <h3>Total Value THB Goal</h3>
+              <p>From Goal - Plan sheet</p>
+            </div>
+            <strong id="totalValueGoalLabel">-</strong>
+          </div>
+
+          <div class="goal-progress">
+            <div class="goal-progress-fill value-goal-fill" id="totalValueGoalFill"></div>
+          </div>
+          <div class="goal-meta">
+            <span id="totalValueGoalProgress">-</span>
+            <span id="totalValueGoalRemaining">-</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="dashboard-grid">
+
+        <div class="panel chart-panel">
+          <div class="panel-header">
+            <div>
+              <h3>Portfolio Weight</h3>
+              <p>Allocation by stock</p>
+            </div>
+          </div>
+
+          <div class="chart-box">
+            <canvas id="portfolioChart"></canvas>
+          </div>
+        </div>
+
+        <div class="panel chart-panel">
+          <div class="panel-header">
+            <div>
+              <h3>Profit / Loss by Stock</h3>
+              <p>Green = profit, Red = loss</p>
+            </div>
+          </div>
+
+          <div class="chart-box">
+            <canvas id="profitChart"></canvas>
+          </div>
+        </div>
+
+        <div class="panel chart-panel app-exposure-panel">
+          <div class="panel-header">
+            <div>
+              <h3>Application Exposure</h3>
+              <p>Dime / Webull allocation</p>
+            </div>
+          </div>
+
+          <div class="chart-box app-chart-box">
+            <canvas id="appChart"></canvas>
+          </div>
+        </div>
+
+        <div class="panel chart-panel daily-tracking-panel page-section" id="dailyTrackingSection">
+          <div class="panel-header">
+            <div>
+              <h3>Daily Portfolio Value</h3>
+              <p>From Portfolio - Tracking sheet</p>
+            </div>
+          </div>
+
+          <div class="chart-box daily-chart-box">
+            <canvas id="dailyTrackingChart"></canvas>
+          </div>
+        </div>
+
+      </section>
+
+      <section class="analytics-grid">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h3>Target Allocation</h3>
+              <p>Equal-weight target based on filtered holdings</p>
+            </div>
+          </div>
+
+          <div class="table-wrap compact-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Stock</th>
+                  <th>Current</th>
+                  <th>Target</th>
+                  <th>Action</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody id="rebalanceTable">
+                <tr>
+                  <td colspan="5" class="empty">Loading data...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel ai-summary-panel">
+          <div class="panel-header">
+            <div>
+              <h3>AI Summary</h3>
+              <p>Rule-based readout from current filters</p>
+            </div>
+          </div>
+
+          <ul class="ai-summary-list" id="aiSummaryList">
+            <li>Loading data...</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="panel page-section" id="holdingsSection">
+        <div class="table-header">
+          <div>
+            <h3>Holdings</h3>
+            <p id="stockCount">-</p>
+          </div>
+
+          <span id="lastUpdated">Loading...</span>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Stock</th>
+                <th>Price</th>
+                <th>Qty</th>
+                <th>Current Value</th>
+                <th>Total THB</th>
+                <th>P/L %</th>
+                <th>P/L THB</th>
+                <th>App</th>
+                <th>Weight</th>
+              </tr>
+            </thead>
+
+            <tbody id="stockTable">
+              <tr>
+                <td colspan="9" class="empty">Loading data...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel monthly-detail page-section" id="monthlySummarySection">
+        <div class="panel-header">
+          <div>
+            <h3>Monthly Summary</h3>
+            <p>Latest month snapshot and trend</p>
+          </div>
+        </div>
+
+        <div class="monthly-detail-grid">
+          <div class="metric-tile">
+            <span>Period</span>
+            <strong id="monthlyPagePeriod">-</strong>
+          </div>
+          <div class="metric-tile">
+            <span>Total Value</span>
+            <strong id="monthlyPageTotalTHB">-</strong>
+          </div>
+          <div class="metric-tile">
+            <span>Profit / Loss</span>
+            <strong id="monthlyPageProfitTHB">-</strong>
+          </div>
+          <div class="metric-tile">
+            <span>MoM Value</span>
+            <strong id="monthlyPageMoM">-</strong>
+          </div>
+        </div>
+
+        <div class="chart-box monthly-chart-box">
+          <canvas id="monthlyTrendChart"></canvas>
+        </div>
+
+        <div class="table-wrap compact-table-wrap monthly-flow-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th>Deposit</th>
+                <th>Withdraw</th>
+                <th>Return</th>
+                <th>Ending Value</th>
+              </tr>
+            </thead>
+            <tbody id="monthlyFlowTable">
+              <tr>
+                <td colspan="5" class="empty">Loading data...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+<script>
+Chart.register(ChartDataLabels);
+
+const BRAND_COLORS = {
+  dime: {
+    bg: '#5DF591',
+    text: '#062814',
+    border: '#35D872'
+  },
+  webull: {
+    bg: '#1942E0',
+    text: '#FFFFFF',
+    border: '#1942E0'
+  },
+  unknown: {
+    bg: '#64748B',
+    text: '#FFFFFF',
+    border: '#64748B'
+  }
+};
+
+const PROFIT_COLOR = '#15803D';
+const LOSS_COLOR = '#DC2626';
+const NEUTRAL_COLOR = '#64748B';
+
+const PORTFOLIO_COLORS = [
+  '#2563EB',
+  '#14B8A6',
+  '#F59E0B',
+  '#8B5CF6',
+  '#64748B',
+  '#22C55E',
+  '#EF4444',
+  '#0EA5E9',
+  '#A855F7',
+  '#84CC16'
+];
+
+let portfolioChart;
+let profitChart;
+let appChart;
+let dailyTrackingChart;
+let monthlyTrendChart;
+let dashboardData = {
+  stocks: [],
+  trackingRows: [],
+  dailyTracking: [],
+  goals: {
+    totalCostGoal: 0,
+    totalValueTHBGoal: 0
+  }
+};
+
+function setupNavigation() {
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const target = document.getElementById(item.dataset.target);
+      if (!target) return;
+
+      document.querySelectorAll('.nav-item').forEach(navItem => {
+        navItem.classList.toggle('active', navItem === item);
+      });
+
+      target.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    });
+  });
+}
+
+function setupFilters() {
+  ['filterStartDate', 'filterEndDate'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    el.addEventListener('change', applyFilters);
+  });
+
+  document.addEventListener('click', event => {
+    ['stockMultiSelect', 'appMultiSelect'].forEach(id => {
+      const multiSelect = document.getElementById(id);
+      if (!multiSelect || multiSelect.contains(event.target)) return;
+
+      multiSelect.classList.remove('open');
+    });
+  });
+}
+
+function toggleAppDropdown() {
+  document.getElementById('appMultiSelect').classList.toggle('open');
+}
+
+function toggleStockDropdown() {
+  document.getElementById('stockMultiSelect').classList.toggle('open');
+}
+
+function loadData() {
+  document.getElementById('lastUpdated').textContent = 'Refreshing...';
+
+  google.script.run
+    .withSuccessHandler(renderAll)
+    .withFailureHandler(showError)
+    .getDashboardData();
+}
+
+function showError(error) {
+  alert(error.message || error);
+  document.getElementById('lastUpdated').textContent = 'Error loading data';
+}
+
+function renderAll(result) {
+  dashboardData = {
+    stocks: result.stocks || [],
+    trackingRows: result.trackingRows || [],
+    dailyTracking: result.dailyTracking || [],
+    goals: result.goals || {
+      totalCostGoal: 0,
+      totalValueTHBGoal: 0
+    }
+  };
+
+  populateFilters(dashboardData.stocks, dashboardData.trackingRows);
+  applyFilters();
+}
+
+function populateFilters(stocks, trackingRows) {
+  const selectedApps = getSelectedApplications();
+  const selectedStocks = getSelectedStockNames();
+
+  const apps = Array.from(new Set(stocks.map(item => normalizeAppName(item.application)))).sort();
+  const stockNames = Array.from(new Set(stocks.map(item => String(item.stockName || '').trim()).filter(Boolean))).sort();
+
+  renderAppMultiSelect(apps, selectedApps);
+  renderStockMultiSelect(stockNames, selectedStocks);
+
+  const dates = trackingRows.map(item => item.date).filter(Boolean).sort();
+  const startInput = document.getElementById('filterStartDate');
+  const endInput = document.getElementById('filterEndDate');
+
+  if (dates.length && !startInput.value && !endInput.value) {
+    startInput.value = dates[0];
+    endInput.value = dates[dates.length - 1];
+  }
+}
+
+function renderStockMultiSelect(values, selectedValues) {
+  const menu = document.getElementById('stockMultiSelectMenu');
+  const selectedSet = new Set(selectedValues);
+  menu.innerHTML = '';
+
+  values.forEach(value => {
+    const optionId = `stockFilter_${cssSafeId(value)}`;
+    const label = document.createElement('label');
+    label.className = 'multi-select-option';
+    label.htmlFor = optionId;
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = optionId;
+    checkbox.value = value;
+    checkbox.checked = selectedSet.has(value);
+    checkbox.addEventListener('change', () => {
+      updateStockMultiSelectLabel();
+      applyFilters();
+    });
+
+    const span = document.createElement('span');
+    span.textContent = value;
+
+    label.appendChild(checkbox);
+    label.appendChild(span);
+    menu.appendChild(label);
+  });
+
+  updateStockMultiSelectLabel();
+}
+
+function renderAppMultiSelect(values, selectedValues) {
+  const menu = document.getElementById('appMultiSelectMenu');
+  const selectedSet = new Set(selectedValues);
+  menu.innerHTML = '';
+
+  values.forEach(value => {
+    const optionId = `appFilter_${cssSafeId(value)}`;
+    const label = document.createElement('label');
+    label.className = 'multi-select-option';
+    label.htmlFor = optionId;
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = optionId;
+    checkbox.value = value;
+    checkbox.checked = selectedSet.has(value);
+    checkbox.addEventListener('change', () => {
+      updateAppMultiSelectLabel();
+      applyFilters();
+    });
+
+    const span = document.createElement('span');
+    span.textContent = value;
+
+    label.appendChild(checkbox);
+    label.appendChild(span);
+    menu.appendChild(label);
+  });
+
+  updateAppMultiSelectLabel();
+}
+
+function updateStockMultiSelectLabel() {
+  const selectedStocks = getSelectedStockNames();
+  const label = document.getElementById('stockMultiSelectLabel');
+
+  if (!selectedStocks.length) {
+    label.textContent = 'All stocks';
+  } else if (selectedStocks.length === 1) {
+    label.textContent = selectedStocks[0];
+  } else {
+    label.textContent = `${selectedStocks.length} stocks selected`;
+  }
+}
+
+function updateAppMultiSelectLabel() {
+  const selectedApps = getSelectedApplications();
+  const label = document.getElementById('appMultiSelectLabel');
+
+  if (!selectedApps.length) {
+    label.textContent = 'All applications';
+  } else if (selectedApps.length === 1) {
+    label.textContent = selectedApps[0];
+  } else {
+    label.textContent = `${selectedApps.length} applications selected`;
+  }
+}
+
+function applyFilters() {
+  const filters = getFilters();
+
+  const filteredStocks = dashboardData.stocks.filter(item => {
+    const app = normalizeAppName(item.application);
+    const stockName = String(item.stockName || '').trim();
+
+    return (!filters.applications.length || filters.applications.includes(app))
+      && (!filters.stockNames.length || filters.stockNames.includes(stockName));
+  });
+  const holdings = combineHoldingsByStock(filteredStocks);
+
+  const filteredTrackingRows = dashboardData.trackingRows.filter(item => {
+    const app = normalizeAppName(item.application);
+    const stockName = String(item.stockName || '').trim();
+    const date = item.date;
+
+    return (!filters.applications.length || filters.applications.includes(app))
+      && (!filters.stockNames.length || filters.stockNames.includes(stockName))
+      && (!filters.startDate || date >= filters.startDate)
+      && (!filters.endDate || date <= filters.endDate);
+  });
+
+  const dailyTracking = dashboardData.trackingRows.length
+    ? aggregateDailyTracking(filteredTrackingRows)
+    : filterDailyTrackingByDate(dashboardData.dailyTracking, filters);
+  const summary = calculateClientSummary(holdings);
+  const dod = calculateClientDoD(dailyTracking);
+  const monthlySummary = calculateClientMonthlySummary(dailyTracking);
+
+  renderDashboard(
+    holdings,
+    summary,
+    dod,
+    filteredStocks
+  );
+  renderInsightCards(holdings, summary, dod);
+  renderGoalProgress(summary, dashboardData.goals);
+  renderMonthlySummary(monthlySummary);
+  renderDailyTrackingChart(dailyTracking);
+  renderMonthlyTrendChart(dailyTracking);
+  renderMonthlyFlowTable(dailyTracking);
+  renderRebalanceTable(holdings, summary.totalValueTHB);
+  renderAISummary(holdings, summary, dod, monthlySummary);
+}
+
+function resetFilters() {
+  document.getElementById('filterStartDate').value = '';
+  document.getElementById('filterEndDate').value = '';
+  document.querySelectorAll('#appMultiSelectMenu input[type="checkbox"]').forEach(checkbox => {
+    checkbox.checked = false;
+  });
+  document.querySelectorAll('#stockMultiSelectMenu input[type="checkbox"]').forEach(checkbox => {
+    checkbox.checked = false;
+  });
+  updateAppMultiSelectLabel();
+  updateStockMultiSelectLabel();
+
+  const dates = dashboardData.trackingRows.map(item => item.date).filter(Boolean).sort();
+  if (dates.length) {
+    document.getElementById('filterStartDate').value = dates[0];
+    document.getElementById('filterEndDate').value = dates[dates.length - 1];
+  }
+
+  applyFilters();
+}
+
+function getFilters() {
+  return {
+    startDate: document.getElementById('filterStartDate').value,
+    endDate: document.getElementById('filterEndDate').value,
+    applications: getSelectedApplications(),
+    stockNames: getSelectedStockNames()
+  };
+}
+
+function getSelectedApplications() {
+  return Array.from(document.querySelectorAll('#appMultiSelectMenu input[type="checkbox"]:checked'))
+    .map(option => option.value);
+}
+
+function getSelectedStockNames() {
+  return Array.from(document.querySelectorAll('#stockMultiSelectMenu input[type="checkbox"]:checked'))
+    .map(option => option.value);
+}
+
+function cssSafeId(value) {
+  return String(value).replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+function filterDailyTrackingByDate(dailyTracking, filters) {
+  return dailyTracking.filter(item => {
+    return (!filters.startDate || item.date >= filters.startDate)
+      && (!filters.endDate || item.date <= filters.endDate);
+  });
+}
+
+function renderDashboard(stocks, summary, dod, appExposureStocks = stocks) {
+  document.getElementById('totalValueTHB').textContent = formatTHB(summary.totalValueTHB);
+  document.getElementById('totalValueUSD').textContent = formatUSD(summary.totalValueUSD);
+  document.getElementById('totalProfitTHB').textContent = formatTHB(summary.totalProfitTHB);
+  document.getElementById('totalProfitPercent').textContent = formatPercent(summary.totalProfitPercent);
+
+  const profitTHBEl = document.getElementById('totalProfitTHB');
+  const profitPercentEl = document.getElementById('totalProfitPercent');
+
+  profitTHBEl.className = summary.totalProfitTHB >= 0 ? 'positive' : 'negative';
+  profitPercentEl.className = summary.totalProfitPercent >= 0 ? 'positive' : 'negative';
+
+  renderDoD(dod);
+  renderTable(stocks);
+  renderCharts(stocks, appExposureStocks);
+
+  document.getElementById('stockCount').textContent = `${stocks.length} stocks in portfolio`;
+  document.getElementById('lastUpdated').textContent =
+    'Last updated: ' + new Date().toLocaleString();
+}
+
+function renderDoD(dod) {
+  setDoDElement(
+    'dodTotalTHB',
+    dod.totalTHB,
+    dod.totalTHBPercent,
+    'THB'
+  );
+
+  setDoDElement(
+    'dodTotalUSD',
+    dod.totalUSD,
+    dod.totalUSDPercent,
+    'USD'
+  );
+
+  setDoDElement(
+    'dodProfitTHB',
+    dod.profitLossTHB,
+    dod.profitLossTHBPercent,
+    'THB'
+  );
+
+  const dateText = dod.previousDate && dod.latestDate
+    ? `${formatDateLabel(dod.previousDate)} → ${formatDateLabel(dod.latestDate)}`
+    : 'Latest Tracking -';
+
+  document.getElementById('dodDateRange').textContent = dateText;
+}
+
+function renderInsightCards(stocks, summary, dod) {
+  const best = getBestPerformer(stocks);
+  const worst = getWorstPerformer(stocks);
+  const profitPercent = summary.totalCost === 0
+    ? 0
+    : (summary.totalProfitTHB / summary.totalCost) * 100;
+
+  document.getElementById('totalCostTHB').textContent = formatTHB(summary.totalCost);
+  document.getElementById('unrealizedPLTHB').textContent = formatTHB(summary.totalProfitTHB);
+  document.getElementById('unrealizedPLPercent').textContent = formatSignedPercent(profitPercent);
+  document.getElementById('unrealizedPLTHB').className = summary.totalProfitTHB >= 0 ? 'positive' : 'negative';
+  document.getElementById('unrealizedPLPercent').className = 'dod ' + (profitPercent >= 0 ? 'dod-positive' : 'dod-negative');
+
+  document.getElementById('dailyChangeTHB').textContent = formatTHB(dod.totalTHB);
+  document.getElementById('dailyChangePercent').textContent = formatSignedPercent(dod.totalTHBPercent);
+  document.getElementById('dailyChangeTHB').className = dod.totalTHB >= 0 ? 'positive' : 'negative';
+  document.getElementById('dailyChangePercent').className = 'dod ' + (dod.totalTHB >= 0 ? 'dod-positive' : 'dod-negative');
+
+  document.getElementById('bestPerformer').textContent = best ? best.stockName : '-';
+  document.getElementById('bestPerformerValue').textContent = best ? formatSignedPercent(best.profitLossPercent) : '-';
+  document.getElementById('bestPerformerValue').className = 'dod dod-positive';
+
+  document.getElementById('worstPerformer').textContent = worst ? worst.stockName : '-';
+  document.getElementById('worstPerformerValue').textContent = worst ? formatSignedPercent(worst.profitLossPercent) : '-';
+  document.getElementById('worstPerformerValue').className = 'dod dod-negative';
+}
+
+function renderGoalProgress(summary, goals) {
+  renderGoalCard({
+    goalValue: Number(goals.totalCostGoal || 0),
+    currentValue: Number(summary.totalCost || 0),
+    labelId: 'totalCostGoalLabel',
+    fillId: 'totalCostGoalFill',
+    progressId: 'totalCostGoalProgress',
+    remainingId: 'totalCostGoalRemaining'
+  });
+
+  renderGoalCard({
+    goalValue: Number(goals.totalValueTHBGoal || 0),
+    currentValue: Number(summary.totalValueTHB || 0),
+    labelId: 'totalValueGoalLabel',
+    fillId: 'totalValueGoalFill',
+    progressId: 'totalValueGoalProgress',
+    remainingId: 'totalValueGoalRemaining'
+  });
+}
+
+function renderGoalCard(config) {
+  const progress = config.goalValue === 0 ? 0 : (config.currentValue / config.goalValue) * 100;
+  const clampedProgress = Math.max(0, Math.min(progress, 100));
+  const remaining = Math.max(config.goalValue - config.currentValue, 0);
+
+  document.getElementById(config.labelId).textContent = config.goalValue ? formatTHB(config.goalValue) : '-';
+  document.getElementById(config.fillId).style.width = clampedProgress + '%';
+  document.getElementById(config.progressId).textContent = config.goalValue
+    ? `${formatTHB(config.currentValue)} (${progress.toFixed(1)}%)`
+    : 'No goal set';
+  document.getElementById(config.remainingId).textContent = config.goalValue
+    ? `${formatTHB(remaining)} remaining`
+    : '-';
+}
+
+function setDoDElement(elementId, value, percent, currency) {
+  const el = document.getElementById(elementId);
+  const number = Number(value || 0);
+  const percentNumber = Number(percent || 0);
+
+  let valueText = currency === 'USD'
+    ? formatUSD(number)
+    : formatTHB(number);
+
+  const sign = number > 0 ? '+' : '';
+  const percentSign = percentNumber > 0 ? '+' : '';
+
+  el.textContent = `${sign}${valueText} (${percentSign}${percentNumber.toFixed(2)}%)`;
+  el.className = 'dod ' + (number >= 0 ? 'dod-positive' : 'dod-negative');
+}
+
+function renderMonthlySummary(monthly) {
+  document.getElementById('monthlyPeriod').textContent = monthly.monthLabel || '-';
+  document.getElementById('monthlyTotalTHB').textContent = formatTHB(monthly.totalTHB);
+  document.getElementById('monthlyProfitTHB').textContent = formatTHB(monthly.profitLossTHB);
+
+  const momValue = Number(monthly.momTHB || 0);
+  const momPercent = Number(monthly.momTHBPercent || 0);
+  const momSign = momValue > 0 ? '+' : '';
+  const momPercentSign = momPercent > 0 ? '+' : '';
+
+  const momEl = document.getElementById('monthlyMoM');
+  momEl.textContent = `${momSign}${formatTHB(momValue)} (${momPercentSign}${momPercent.toFixed(2)}%)`;
+  momEl.className = momValue >= 0 ? 'monthly-positive' : 'monthly-negative';
+
+  const profitEl = document.getElementById('monthlyProfitTHB');
+  profitEl.className = Number(monthly.profitLossTHB || 0) >= 0 ? 'monthly-positive' : 'monthly-negative';
+
+  document.getElementById('monthlyDays').textContent = `${monthly.daysTracked || 0} days`;
+
+  document.getElementById('monthlyPagePeriod').textContent = monthly.monthLabel || '-';
+  document.getElementById('monthlyPageTotalTHB').textContent = formatTHB(monthly.totalTHB);
+  document.getElementById('monthlyPageProfitTHB').textContent = formatTHB(monthly.profitLossTHB);
+  document.getElementById('monthlyPageMoM').textContent = `${momSign}${formatTHB(momValue)} (${momPercentSign}${momPercent.toFixed(2)}%)`;
+
+  const pageProfitEl = document.getElementById('monthlyPageProfitTHB');
+  const pageMoMEl = document.getElementById('monthlyPageMoM');
+  pageProfitEl.className = Number(monthly.profitLossTHB || 0) >= 0 ? 'positive' : 'negative';
+  pageMoMEl.className = momValue >= 0 ? 'positive' : 'negative';
+}
+
+function renderTable(stocks) {
+  const tbody = document.getElementById('stockTable');
+  tbody.innerHTML = '';
+
+  if (!stocks.length) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="9" class="empty">No stock data found</td>
+      </tr>
+    `;
+    return;
+  }
+
+  const sortedStocks = [...stocks].sort((a, b) => Number(b.portfolioWeight || 0) - Number(a.portfolioWeight || 0));
+
+  sortedStocks.forEach(item => {
+    const appClass = getAppClass(item.application);
+    const tr = document.createElement('tr');
+
+    tr.innerHTML = `
+      <td>
+        <div class="stock-name">${escapeHTML(item.stockName)}</div>
+      </td>
+      <td>${formatUSD(item.price)}</td>
+      <td>${formatNumber(item.quantity)}</td>
+      <td>${formatUSD(item.currentValue)}</td>
+      <td>${formatTHB(item.totalTHB)}</td>
+      <td class="${item.profitLossPercent >= 0 ? 'positive' : 'negative'}">
+        ${formatPercent(item.profitLossPercent)}
+      </td>
+      <td class="${item.profitLossTHB >= 0 ? 'positive' : 'negative'}">
+        ${formatTHB(item.profitLossTHB)}
+      </td>
+      <td>
+        <span class="app-tag ${appClass}">${escapeHTML(item.application)}</span>
+      </td>
+      <td>${formatPercent(item.portfolioWeight)}</td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+}
+
+function combineHoldingsByStock(stocks) {
+  const holdingsMap = {};
+
+  stocks.forEach(item => {
+    const stockName = String(item.stockName || '').trim();
+    if (!stockName) return;
+
+    const key = stockName.toUpperCase();
+
+    if (!holdingsMap[key]) {
+      holdingsMap[key] = {
+        stockName,
+        price: Number(item.price || 0),
+        quantity: 0,
+        currentValue: 0,
+        totalCost: 0,
+        boughtTHB: 0,
+        avgCost: 0,
+        profitLossPercent: 0,
+        profitLossTHB: 0,
+        profitLossUSD: 0,
+        totalTHB: 0,
+        totalUSD: 0,
+        application: normalizeAppName(item.application),
+        applications: {},
+        portfolioWeight: 0
+      };
+    }
+
+    const holding = holdingsMap[key];
+    holding.quantity += Number(item.quantity || 0);
+    holding.currentValue += Number(item.currentValue || 0);
+    holding.totalCost += Number(item.totalCost || 0);
+    holding.boughtTHB += Number(item.boughtTHB || 0);
+    holding.profitLossTHB += Number(item.profitLossTHB || 0);
+    holding.profitLossUSD += Number(item.profitLossUSD || 0);
+    holding.totalTHB += Number(item.totalTHB || 0);
+    holding.totalUSD += Number(item.totalUSD || 0);
+    holding.price = Number(item.price || holding.price || 0);
+    holding.applications[normalizeAppName(item.application)] = true;
+  });
+
+  const holdings = Object.values(holdingsMap);
+  const totalValueTHB = holdings.reduce((sum, item) => sum + item.totalTHB, 0);
+
+  holdings.forEach(item => {
+    item.avgCost = item.quantity === 0 ? 0 : item.boughtTHB / item.quantity;
+    item.profitLossPercent = item.boughtTHB === 0 ? 0 : (item.profitLossTHB / item.boughtTHB) * 100;
+    item.portfolioWeight = totalValueTHB === 0 ? 0 : (item.totalTHB / totalValueTHB) * 100;
+    item.application = Object.keys(item.applications).join(', ') || item.application;
+    delete item.applications;
+  });
+
+  return holdings;
+}
+
+function getBestPerformer(stocks) {
+  if (!stocks.length) return null;
+  return [...stocks].sort((a, b) => Number(b.profitLossPercent || 0) - Number(a.profitLossPercent || 0))[0];
+}
+
+function getWorstPerformer(stocks) {
+  if (!stocks.length) return null;
+  return [...stocks].sort((a, b) => Number(a.profitLossPercent || 0) - Number(b.profitLossPercent || 0))[0];
+}
+
+function calculateClientSummary(stocks) {
+  const totalValueTHB = stocks.reduce((sum, item) => sum + Number(item.totalTHB || 0), 0);
+  const totalValueUSD = stocks.reduce((sum, item) => sum + Number(item.totalUSD || 0), 0);
+  const totalCost = stocks.reduce((sum, item) => sum + Number(item.boughtTHB || 0), 0);
+  const totalProfitTHB = stocks.reduce((sum, item) => sum + Number(item.profitLossTHB || 0), 0);
+  const totalProfitUSD = stocks.reduce((sum, item) => sum + Number(item.profitLossUSD || 0), 0);
+
+  return {
+    totalValueTHB,
+    totalValueUSD,
+    totalCost,
+    totalProfitTHB,
+    totalProfitUSD,
+    totalProfitPercent: totalCost === 0 ? 0 : (totalProfitTHB / totalCost) * 100,
+    stockCount: stocks.length
+  };
+}
+
+function aggregateDailyTracking(trackingRows) {
+  const dailyMap = {};
+
+  trackingRows.forEach(row => {
+    if (!row.date) return;
+
+    if (!dailyMap[row.date]) {
+      dailyMap[row.date] = {
+        date: row.date,
+        totalTHB: 0,
+        totalUSD: 0,
+        profitLossTHB: 0,
+        profitLossUSD: 0,
+        totalCost: 0,
+        stockCount: 0,
+        stocks: {}
+      };
+    }
+
+    dailyMap[row.date].totalTHB += Number(row.totalTHB || 0);
+    dailyMap[row.date].totalUSD += Number(row.totalUSD || 0);
+    dailyMap[row.date].profitLossTHB += Number(row.profitLossTHB || 0);
+    dailyMap[row.date].profitLossUSD += Number(row.profitLossUSD || 0);
+    dailyMap[row.date].totalCost += Number(row.boughtTHB || 0);
+
+    if (row.stockName) {
+      dailyMap[row.date].stocks[String(row.stockName).toUpperCase()] = true;
+    }
+  });
+
+  return Object.values(dailyMap)
+    .map(item => {
+      item.stockCount = Object.keys(item.stocks).length;
+      delete item.stocks;
+      return item;
+    })
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
+function calculateClientDoD(dailyData) {
+  if (!dailyData || dailyData.length < 2) {
+    return {
+      totalTHB: 0,
+      totalUSD: 0,
+      profitLossTHB: 0,
+      profitLossUSD: 0,
+      totalTHBPercent: 0,
+      totalUSDPercent: 0,
+      profitLossTHBPercent: 0,
+      latestDate: '',
+      previousDate: ''
+    };
+  }
+
+  const latest = dailyData[dailyData.length - 1];
+  const previous = dailyData[dailyData.length - 2];
+  const totalTHBDiff = latest.totalTHB - previous.totalTHB;
+  const totalUSDDiff = latest.totalUSD - previous.totalUSD;
+  const profitLossTHBDiff = latest.profitLossTHB - previous.profitLossTHB;
+  const profitLossUSDDiff = latest.profitLossUSD - previous.profitLossUSD;
+
+  return {
+    totalTHB: totalTHBDiff,
+    totalUSD: totalUSDDiff,
+    profitLossTHB: profitLossTHBDiff,
+    profitLossUSD: profitLossUSDDiff,
+    totalTHBPercent: calculatePercentChange(totalTHBDiff, previous.totalTHB),
+    totalUSDPercent: calculatePercentChange(totalUSDDiff, previous.totalUSD),
+    profitLossTHBPercent: calculatePercentChange(profitLossTHBDiff, previous.profitLossTHB),
+    latestDate: latest.date,
+    previousDate: previous.date
+  };
+}
+
+function calculateClientMonthlySummary(dailyData) {
+  if (!dailyData || dailyData.length === 0) {
+    return {
+      monthLabel: '-',
+      latestDate: '-',
+      totalTHB: 0,
+      totalUSD: 0,
+      profitLossTHB: 0,
+      profitLossUSD: 0,
+      daysTracked: 0,
+      momTHB: 0,
+      momTHBPercent: 0
+    };
+  }
+
+  const monthlyMap = {};
+
+  dailyData.forEach(item => {
+    const monthKey = String(item.date || '').substring(0, 7);
+    if (!monthKey) return;
+
+    if (!monthlyMap[monthKey]) {
+      monthlyMap[monthKey] = {
+        monthKey,
+        days: [],
+        latestDate: item.date,
+        totalTHB: item.totalTHB,
+        totalUSD: item.totalUSD,
+        profitLossTHB: item.profitLossTHB,
+        profitLossUSD: item.profitLossUSD
+      };
+    }
+
+    monthlyMap[monthKey].days.push(item);
+
+    if (new Date(item.date) >= new Date(monthlyMap[monthKey].latestDate)) {
+      monthlyMap[monthKey].latestDate = item.date;
+      monthlyMap[monthKey].totalTHB = item.totalTHB;
+      monthlyMap[monthKey].totalUSD = item.totalUSD;
+      monthlyMap[monthKey].profitLossTHB = item.profitLossTHB;
+      monthlyMap[monthKey].profitLossUSD = item.profitLossUSD;
+    }
+  });
+
+  const months = Object.values(monthlyMap)
+    .sort((a, b) => new Date(a.monthKey + '-01') - new Date(b.monthKey + '-01'));
+
+  if (!months.length) {
+    return calculateClientMonthlySummary([]);
+  }
+
+  const latestMonth = months[months.length - 1];
+  const previousMonth = months.length >= 2 ? months[months.length - 2] : null;
+  const momTHB = previousMonth ? latestMonth.totalTHB - previousMonth.totalTHB : 0;
+  const momTHBPercent = previousMonth && previousMonth.totalTHB !== 0
+    ? (momTHB / Math.abs(previousMonth.totalTHB)) * 100
+    : 0;
+
+  return {
+    monthLabel: formatMonthFullLabel(latestMonth.monthKey),
+    latestDate: latestMonth.latestDate,
+    totalTHB: latestMonth.totalTHB,
+    totalUSD: latestMonth.totalUSD,
+    profitLossTHB: latestMonth.profitLossTHB,
+    profitLossUSD: latestMonth.profitLossUSD,
+    daysTracked: latestMonth.days.length,
+    momTHB,
+    momTHBPercent
+  };
+}
+
+function calculatePercentChange(diff, previousValue) {
+  const denominator = Math.abs(Number(previousValue || 0));
+  return denominator === 0 ? 0 : (diff / denominator) * 100;
+}
+
+function renderMonthlyFlowTable(dailyData) {
+  const tbody = document.getElementById('monthlyFlowTable');
+  const rows = buildMonthlyFlowRows(dailyData);
+  tbody.innerHTML = '';
+
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty">No monthly data found</td></tr>';
+    return;
+  }
+
+  rows.forEach(row => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHTML(formatMonthFullLabel(row.monthKey))}</td>
+      <td>${formatTHB(row.deposit)}</td>
+      <td>${formatTHB(row.withdraw)}</td>
+      <td class="${row.returnTHB >= 0 ? 'positive' : 'negative'}">${formatTHB(row.returnTHB)}</td>
+      <td>${formatTHB(row.endingValue)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function buildMonthlyFlowRows(dailyData) {
+  const monthlyMap = {};
+
+  dailyData.forEach(item => {
+    const monthKey = String(item.date || '').substring(0, 7);
+    if (!monthKey) return;
+
+    if (!monthlyMap[monthKey] || new Date(item.date) >= new Date(monthlyMap[monthKey].date)) {
+      monthlyMap[monthKey] = item;
+    }
+  });
+
+  const months = Object.keys(monthlyMap).sort();
+  let previousValue = null;
+  let previousCost = null;
+
+  return months.map(monthKey => {
+    const item = monthlyMap[monthKey];
+    const endingValue = Number(item.totalTHB || 0);
+    const endingCost = Number(item.totalCost || 0);
+    const costChange = previousCost === null ? endingCost : endingCost - previousCost;
+    const netCashFlow = previousCost === null ? 0 : costChange;
+    const valueChange = previousValue === null ? 0 : endingValue - previousValue;
+    const row = {
+      monthKey,
+      deposit: Math.max(costChange, 0),
+      withdraw: Math.max(-costChange, 0),
+      returnTHB: previousValue === null ? Number(item.profitLossTHB || 0) : valueChange - netCashFlow,
+      endingValue
+    };
+
+    previousValue = endingValue;
+    previousCost = endingCost;
+    return row;
+  });
+}
+
+function renderRebalanceTable(stocks, totalValueTHB) {
+  const tbody = document.getElementById('rebalanceTable');
+  tbody.innerHTML = '';
+
+  if (!stocks.length || totalValueTHB === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty">No holdings to rebalance</td></tr>';
+    return;
+  }
+
+  const targetWeight = 100 / stocks.length;
+  const targetValue = totalValueTHB / stocks.length;
+  const rows = [...stocks]
+    .map(item => {
+      const diff = targetValue - Number(item.totalTHB || 0);
+      return {
+        stockName: item.stockName,
+        currentWeight: Number(item.portfolioWeight || 0),
+        targetWeight,
+        action: Math.abs(diff) < totalValueTHB * 0.005 ? 'Hold' : diff > 0 ? 'Buy' : 'Trim',
+        amount: Math.abs(diff)
+      };
+    })
+    .sort((a, b) => b.amount - a.amount);
+
+  rows.forEach(row => {
+    const tr = document.createElement('tr');
+    const actionClass = row.action === 'Buy' ? 'positive' : row.action === 'Trim' ? 'negative' : '';
+    tr.innerHTML = `
+      <td>${escapeHTML(row.stockName)}</td>
+      <td>${formatPercent(row.currentWeight)}</td>
+      <td>${formatPercent(row.targetWeight)}</td>
+      <td class="${actionClass}">${row.action}</td>
+      <td>${formatTHB(row.amount)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderAISummary(stocks, summary, dod, monthlySummary) {
+  const list = document.getElementById('aiSummaryList');
+  const best = getBestPerformer(stocks);
+  const worst = getWorstPerformer(stocks);
+  const topWeight = stocks.length
+    ? [...stocks].sort((a, b) => Number(b.portfolioWeight || 0) - Number(a.portfolioWeight || 0))[0]
+    : null;
+  const lines = [];
+
+  if (!stocks.length) {
+    list.innerHTML = '<li>No holdings match the current filters.</li>';
+    return;
+  }
+
+  lines.push(`Portfolio value is ${formatTHB(summary.totalValueTHB)} with unrealized P&L of ${formatTHB(summary.totalProfitTHB)} (${formatSignedPercent(summary.totalProfitPercent)}).`);
+  lines.push(`Daily change is ${formatTHB(dod.totalTHB)} (${formatSignedPercent(dod.totalTHBPercent)}) for the selected date range.`);
+
+  if (best && worst) {
+    lines.push(`Best performer is ${best.stockName} at ${formatSignedPercent(best.profitLossPercent)}; weakest is ${worst.stockName} at ${formatSignedPercent(worst.profitLossPercent)}.`);
+  }
+
+  if (topWeight) {
+    lines.push(`${topWeight.stockName} is the largest allocation at ${formatPercent(topWeight.portfolioWeight)}${topWeight.portfolioWeight > 35 ? ', so concentration risk is elevated.' : '.'}`);
+  }
+
+  lines.push(`Latest monthly value is ${formatTHB(monthlySummary.totalTHB)} with ${monthlySummary.daysTracked || 0} tracked days.`);
+
+  list.innerHTML = lines.map(line => `<li>${escapeHTML(line)}</li>`).join('');
+}
+
+function renderCharts(stocks, appExposureStocks = stocks) {
+  renderPortfolioChart(stocks);
+  renderProfitChart(stocks);
+  renderAppChart(appExposureStocks);
+}
+
+function renderPortfolioChart(stocks) {
+  const ctx = document.getElementById('portfolioChart');
+
+  const labels = stocks.map(item => item.stockName);
+  const data = stocks.map(item => item.portfolioWeight);
+
+  if (portfolioChart) {
+    portfolioChart.destroy();
+  }
+
+  portfolioChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: labels.map((_, index) => PORTFOLIO_COLORS[index % PORTFOLIO_COLORS.length]),
+        borderColor: '#FFFFFF',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '68%',
+      plugins: {
+        datalabels: {
+          display: function(context) {
+            return context.dataset.data[context.dataIndex] >= 5;
+          },
+          color: '#FFFFFF',
+          font: {
+            family: 'Kanit',
+            weight: '700',
+            size: 11
+          },
+          formatter: function(value) {
+            return Number(value).toFixed(1) + '%';
+          }
+        },
+        legend: {
+          position: 'bottom',
+          labels: {
+            boxWidth: 12,
+            padding: 12,
+            font: {
+              family: 'Kanit'
+            }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return `${context.label}: ${formatPercent(context.raw)}`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderProfitChart(stocks) {
+  const ctx = document.getElementById('profitChart');
+
+  const sortedStocks = [...stocks].sort((a, b) => b.profitLossTHB - a.profitLossTHB);
+
+  const labels = sortedStocks.map(item => item.stockName);
+  const data = sortedStocks.map(item => item.profitLossTHB);
+
+  if (profitChart) {
+    profitChart.destroy();
+  }
+
+  profitChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Profit / Loss THB',
+        data,
+        backgroundColor: data.map(value => {
+          if (value > 0) return PROFIT_COLOR;
+          if (value < 0) return LOSS_COLOR;
+          return NEUTRAL_COLOR;
+        }),
+        borderColor: data.map(value => {
+          if (value > 0) return PROFIT_COLOR;
+          if (value < 0) return LOSS_COLOR;
+          return NEUTRAL_COLOR;
+        }),
+        borderWidth: 1,
+        borderRadius: 8,
+        barThickness: 22
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y',
+      plugins: {
+        datalabels: {
+          anchor: function(context) {
+            const value = context.dataset.data[context.dataIndex];
+            return value >= 0 ? 'end' : 'start';
+          },
+          align: function(context) {
+            const value = context.dataset.data[context.dataIndex];
+            return value >= 0 ? 'right' : 'left';
+          },
+          color: function(context) {
+            const value = context.dataset.data[context.dataIndex];
+            return value >= 0 ? PROFIT_COLOR : LOSS_COLOR;
+          },
+          font: {
+            family: 'Kanit',
+            weight: '700',
+            size: 11
+          },
+          formatter: function(value) {
+            return compactTHB(value);
+          }
+        },
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return formatTHB(context.raw);
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            color: '#E5E7EB'
+          },
+          ticks: {
+            callback: function(value) {
+              return compactTHB(value);
+            },
+            font: {
+              family: 'Kanit'
+            }
+          }
+        },
+        y: {
+          grid: {
+            display: false
+          },
+          ticks: {
+            font: {
+              family: 'Kanit',
+              weight: '600'
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderAppChart(stocks) {
+  const ctx = document.getElementById('appChart');
+
+  const appMap = {};
+  const totalPortfolioTHB = stocks.reduce((sum, item) => sum + item.totalTHB, 0);
+  const totalCostTHB = stocks.reduce((sum, item) => sum + item.boughtTHB, 0);
+
+  stocks.forEach(item => {
+    const app = normalizeAppName(item.application);
+    if (!appMap[app]) {
+      appMap[app] = {
+        totalTHB: 0,
+        cost: 0
+      };
+    }
+
+    appMap[app].totalTHB += item.totalTHB;
+    appMap[app].cost += item.boughtTHB;
+  });
+
+  const labels = Object.keys(appMap);
+  const totalData = labels.map(label => appMap[label].totalTHB);
+  const costData = labels.map(label => appMap[label].cost);
+
+  if (appChart) {
+    appChart.destroy();
+  }
+
+  appChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Total THB',
+          data: totalData,
+          backgroundColor: labels.map(label => getAppColor(label)),
+          borderColor: labels.map(label => getAppBorderColor(label)),
+          borderWidth: 1,
+          borderRadius: 8,
+          maxBarThickness: 30
+        },
+        {
+          label: 'Cost',
+          data: costData,
+          backgroundColor: '#F59E0B',
+          borderColor: '#D97706',
+          borderWidth: 1,
+          borderRadius: 8,
+          maxBarThickness: 30
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      datasets: {
+        bar: {
+          categoryPercentage: 0.5,
+          barPercentage: 0.62
+        }
+      },
+      plugins: {
+        datalabels: {
+          anchor: 'end',
+          align: 'top',
+          offset: 4,
+          color: '#0F172A',
+          clamp: true,
+          font: {
+            family: 'Kanit',
+            weight: '700',
+            size: 11
+          },
+          formatter: function(value, context) {
+            const denominator = context.dataset.label === 'Cost'
+              ? totalCostTHB
+              : totalPortfolioTHB;
+            const percent = denominator === 0 ? 0 : (value / denominator) * 100;
+            return `${compactTHB(value)}\n${percent.toFixed(1)}%`;
+          }
+        },
+        legend: {
+          position: 'bottom',
+          labels: {
+            font: {
+              family: 'Kanit'
+            },
+            boxWidth: 14,
+            boxHeight: 14,
+            useBorderRadius: true,
+            borderRadius: 4
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const denominator = context.dataset.label === 'Cost'
+                ? totalCostTHB
+                : totalPortfolioTHB;
+              const percent = denominator === 0 ? 0 : (context.raw / denominator) * 100;
+              return `${context.dataset.label}: ${formatTHB(context.raw)} (${percent.toFixed(2)}%)`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grace: '18%',
+          grid: {
+            color: '#E5E7EB'
+          },
+          ticks: {
+            callback: function(value) {
+              return compactTHB(value);
+            },
+            font: {
+              family: 'Kanit'
+            }
+          }
+        },
+        x: {
+          grid: {
+            display: false
+          },
+          ticks: {
+            font: {
+              family: 'Kanit',
+              weight: '700'
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderDailyTrackingChart(dailyData) {
+  const ctx = document.getElementById('dailyTrackingChart');
+
+  if (!ctx) return;
+
+  const labels = dailyData.map(item => formatDateLabel(item.date));
+  const data = dailyData.map(item => item.totalTHB);
+  const costBasisData = dailyData.map(item => item.totalCost);
+
+  if (dailyTrackingChart) {
+    dailyTrackingChart.destroy();
+  }
+
+  dailyTrackingChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Daily Portfolio Value',
+          data,
+          backgroundColor: '#16875A',
+          borderColor: '#0F6B45',
+          borderWidth: 1,
+          borderRadius: 8,
+          barThickness: 16
+        },
+        {
+          type: 'line',
+          label: 'Cost Basis',
+          data: costBasisData,
+          borderColor: '#F59E0B',
+          backgroundColor: '#F59E0B',
+          borderWidth: 2,
+          pointRadius: 2,
+          tension: 0.25,
+          fill: false
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        datalabels: {
+          display: function(context) {
+            if (context.dataset.type === 'line') return false;
+            const dataLength = context.dataset.data.length;
+            if (dataLength <= 31) return true;
+
+            const index = context.dataIndex;
+            const step = Math.ceil(dataLength / 12);
+            return index === 0 || index === dataLength - 1 || index % step === 0;
+          },
+          anchor: 'end',
+          align: 'top',
+          offset: 4,
+          color: '#0F172A',
+          clamp: true,
+          font: {
+            family: 'Kanit',
+            weight: '700',
+            size: 10
+          },
+          formatter: function(value) {
+            return compactTHB(value);
+          }
+        },
+        legend: {
+          position: 'bottom',
+          labels: {
+            font: {
+              family: 'Kanit'
+            }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            title: function(context) {
+              const index = context[0].dataIndex;
+              return dailyData[index].date;
+            },
+            label: function(context) {
+              return `${context.dataset.label}: ${formatTHB(context.raw)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: false,
+          grace: '18%',
+          grid: {
+            color: '#E5E7EB'
+          },
+          ticks: {
+            callback: function(value) {
+              return compactTHB(value);
+            },
+            font: {
+              family: 'Kanit'
+            }
+          }
+        },
+        x: {
+          grid: {
+            display: false
+          },
+          ticks: {
+            maxRotation: 45,
+            minRotation: 0,
+            font: {
+              family: 'Kanit',
+              weight: '600'
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderMonthlyTrendChart(dailyData) {
+  const ctx = document.getElementById('monthlyTrendChart');
+
+  if (!ctx) return;
+
+  const monthlyMap = {};
+
+  dailyData.forEach(item => {
+    const monthKey = String(item.date || '').substring(0, 7);
+    if (!monthKey) return;
+
+    if (!monthlyMap[monthKey] || new Date(item.date) >= new Date(monthlyMap[monthKey].date)) {
+      monthlyMap[monthKey] = item;
+    }
+  });
+
+  const monthlyItems = Object.keys(monthlyMap)
+    .sort()
+    .map(monthKey => ({
+      monthKey,
+      totalTHB: monthlyMap[monthKey].totalTHB
+    }));
+
+  if (monthlyTrendChart) {
+    monthlyTrendChart.destroy();
+  }
+
+  monthlyTrendChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: monthlyItems.map(item => formatMonthShortLabel(item.monthKey)),
+      datasets: [{
+        label: 'Total Value',
+        data: monthlyItems.map(item => item.totalTHB),
+        backgroundColor: '#16875A',
+        borderColor: '#0F6B45',
+        borderWidth: 1,
+        borderRadius: 8,
+        barThickness: 46
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        datalabels: {
+          display: true,
+          anchor: 'end',
+          align: 'top',
+          offset: 4,
+          color: '#0F172A',
+          font: {
+            family: 'Kanit',
+            weight: '700',
+            size: 10
+          },
+          formatter: function(value) {
+            return compactTHB(value);
+          }
+        },
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return `${context.dataset.label}: ${formatTHB(context.raw)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          grid: {
+            color: '#E5E7EB'
+          },
+          ticks: {
+            callback: function(value) {
+              return compactTHB(value);
+            },
+            font: {
+              family: 'Kanit'
+            }
+          }
+        },
+        x: {
+          grid: {
+            display: false
+          },
+          ticks: {
+            font: {
+              family: 'Kanit',
+              weight: '600'
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function normalizeAppName(value) {
+  const app = String(value || 'Unknown').trim();
+
+  if (app.toLowerCase() === 'dime') return 'Dime';
+  if (app.toLowerCase() === 'webull') return 'Webull';
+
+  return app || 'Unknown';
+}
+
+function getAppKey(value) {
+  const app = String(value || '').trim().toLowerCase();
+
+  if (app === 'dime') return 'dime';
+  if (app === 'webull') return 'webull';
+
+  return 'unknown';
+}
+
+function getAppClass(value) {
+  const key = getAppKey(value);
+
+  if (key === 'dime') return 'app-dime';
+  if (key === 'webull') return 'app-webull';
+
+  return 'app-unknown';
+}
+
+function getAppColor(value) {
+  const key = getAppKey(value);
+  return BRAND_COLORS[key].bg;
+}
+
+function getAppBorderColor(value) {
+  const key = getAppKey(value);
+  return BRAND_COLORS[key].border;
+}
+
+function formatTHB(value) {
+  return '฿' + Number(value || 0).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+function formatUSD(value) {
+  return '$' + Number(value || 0).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+function formatPercent(value) {
+  return Number(value || 0).toFixed(2) + '%';
+}
+
+function formatSignedPercent(value) {
+  const number = Number(value || 0);
+  const sign = number > 0 ? '+' : '';
+  return sign + number.toFixed(2) + '%';
+}
+
+function formatNumber(value) {
+  return Number(value || 0).toLocaleString('en-US', {
+    maximumFractionDigits: 4
+  });
+}
+
+function compactTHB(value) {
+  const number = Number(value || 0);
+  const sign = number < 0 ? '-' : '';
+  const abs = Math.abs(number);
+
+  if (abs >= 1000000) {
+    return sign + '฿' + (abs / 1000000).toFixed(1) + 'M';
+  }
+
+  if (abs >= 1000) {
+    return sign + '฿' + (abs / 1000).toFixed(1) + 'K';
+  }
+
+  return sign + '฿' + abs.toFixed(0);
+}
+
+function formatDateLabel(value) {
+  const date = new Date(value);
+
+  if (isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short'
+  });
+}
+
+function formatMonthShortLabel(monthKey) {
+  const date = new Date(monthKey + '-01');
+
+  if (isNaN(date.getTime())) {
+    return monthKey;
+  }
+
+  return date.toLocaleDateString('en-GB', {
+    month: 'short',
+    year: '2-digit'
+  });
+}
+
+function formatMonthFullLabel(monthKey) {
+  const date = new Date(monthKey + '-01');
+
+  if (isNaN(date.getTime())) {
+    return monthKey;
+  }
+
+  return date.toLocaleDateString('en-GB', {
+    month: 'short',
+    year: 'numeric'
+  });
+}
+
+function escapeHTML(value) {
+  return String(value || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+setupNavigation();
+setupFilters();
+loadData();
+</script>
+
+</body>
+</html>

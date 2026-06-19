@@ -45,6 +45,33 @@ body {
   top: 0;
   height: 100vh;
   overflow-y: auto;
+  flex-shrink: 0;
+  transition: width 0.2s ease, padding 0.2s ease;
+}
+
+.sidebar-toggle {
+  width: 36px;
+  height: 36px;
+  margin: 0 0 20px auto;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+  color: #cbd5e1;
+  display: grid;
+  place-items: center;
+}
+
+.sidebar-toggle:hover {
+  background: rgba(255,255,255,0.12);
+  color: #ffffff;
+}
+
+.sidebar-toggle svg,
+.nav-item svg {
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
 }
 
 .brand {
@@ -96,6 +123,9 @@ nav {
   font-weight: 500;
   text-align: left;
   white-space: normal;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 
@@ -175,6 +205,40 @@ nav {
   margin-top: 4px;
   color: #64748b;
   font-size: 12px;
+}
+
+.sidebar.is-collapsed {
+  width: 84px;
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
+.sidebar.is-collapsed .sidebar-toggle {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.sidebar.is-collapsed .brand {
+  justify-content: center;
+}
+
+.sidebar.is-collapsed .sidebar-content,
+.sidebar.is-collapsed .nav-label,
+.sidebar.is-collapsed .monthly-box,
+.sidebar.is-collapsed .sidebar-footer {
+  display: none;
+}
+
+.sidebar.is-collapsed .nav-item {
+  width: 54px;
+  height: 48px;
+  margin: 0 auto;
+  padding: 0;
+  justify-content: center;
+}
+
+.sidebar.is-collapsed .nav-item.active {
+  transform: none;
 }
 
 .main {
@@ -375,6 +439,10 @@ button:hover {
   margin-bottom: 18px;
 }
 
+.summary-cards {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .card,
 .panel {
   background: var(--panel);
@@ -414,6 +482,22 @@ button:hover {
 .muted-dod {
   color: var(--muted);
   font-weight: 500;
+}
+
+.performer-metrics {
+  margin-top: 10px;
+  display: grid;
+  gap: 5px;
+}
+
+.performer-metrics .dod {
+  margin-top: 0;
+}
+
+.performer-total {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .dashboard-grid {
@@ -741,7 +825,34 @@ tr:hover {
   .sidebar {
     width: 100%;
     height: auto;
-    position: static;
+    position: relative;
+  }
+
+  .sidebar.is-collapsed {
+    width: 100%;
+    height: 84px;
+    padding: 14px 18px;
+    overflow: hidden;
+  }
+
+  .sidebar.is-collapsed .sidebar-toggle {
+    position: absolute;
+    top: 24px;
+    right: 18px;
+    margin: 0;
+  }
+
+  .sidebar.is-collapsed .brand {
+    justify-content: flex-start;
+    margin: 6px 54px 0 0;
+  }
+
+  .sidebar.is-collapsed .sidebar-content {
+    display: block;
+  }
+
+  .sidebar.is-collapsed nav {
+    display: none;
   }
 
   .main {

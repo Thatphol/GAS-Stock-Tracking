@@ -5,10 +5,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-
   <?!= include('Page/Style'); ?>
 </head>
 
@@ -414,8 +410,14 @@
     </main>
   </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
 <script>
 Chart.register(ChartDataLabels);
+
+const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxW5rdrP4yQfhV8rT5IOBK08sPq1OT6C8V_ap06n4S92pF_GPD45TUF15vpOelMwTiz/exec';
+const DATA_CACHE_KEY = 'stockTrackerDashboardDataV1';
 
 const BRAND_COLORS = {
   dime: {
@@ -545,10 +547,58 @@ function toggleStockDropdown() {
 function loadData() {
   document.getElementById('lastUpdated').textContent = 'Refreshing...';
 
-  google.script.run
-    .withSuccessHandler(renderAll)
-    .withFailureHandler(showError)
-    .getDashboardData();
+  const instantData = window.__STOCK_TRACKER_DATA__ || localStorage.getItem(DATA_CACHE_KEY);
+  if (instantData) {
+    try {
+      renderAll(typeof instantData === 'string' ? JSON.parse(instantData) : instantData);
+    } catch (error) {
+      localStorage.removeItem(DATA_CACHE_KEY);
+    }
+  }
+
+  if (window.google && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(handleDashboardData)
+      .withFailureHandler(showError)
+      .getDashboardData();
+    return;
+  }
+
+  loadDashboardJsonp();
+}
+
+function loadDashboardJsonp() {
+  const callback = 'stockTrackerDashboardCallback';
+  const script = document.createElement('script');
+  const timeout = setTimeout(() => {
+    script.remove();
+    showError(new Error('Dashboard API timed out'));
+  }, 15000);
+
+  window[callback] = result => {
+    clearTimeout(timeout);
+    script.remove();
+    delete window[callback];
+    handleDashboardData(result);
+  };
+
+  script.onerror = () => {
+    clearTimeout(timeout);
+    script.remove();
+    delete window[callback];
+    showError(new Error('Dashboard API could not be reached'));
+  };
+  script.src = GAS_API_URL + '?api=1&callback=' + callback + '&t=' + Date.now();
+  document.head.appendChild(script);
+}
+
+function handleDashboardData(result) {
+  try {
+    localStorage.setItem(DATA_CACHE_KEY, JSON.stringify(result));
+  } catch (error) {
+    // localStorage may be unavailable; live data still renders normally.
+  }
+  renderAll(result);
 }
 
 function showError(error) {

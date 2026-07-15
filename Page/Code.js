@@ -2,8 +2,15 @@ const SHEET_NAME = 'Portfolio';
 const TRACKING_SHEET_NAME = 'Portfolio - Tracking';
 const GOAL_SHEET_NAME = 'Goal - Plan';
 const TRACKING_TIMESTAMP_COLUMN_INDEX = 14; // Column O, zero-based row index.
+const DASHBOARD_CACHE_KEY = 'dashboard-v1';
+const DASHBOARD_CACHE_SECONDS = 60;
+const DASHBOARD_CACHE_CHUNK_SIZE = 90000;
 
-function doGet() {
+function doGet(e) {
+  if (e && e.parameter && e.parameter.api === '1') {
+    return getDashboardApiResponse(e.parameter.callback);
+  }
+
   return HtmlService
     .createTemplateFromFile('Page/Index')
     .evaluate()
@@ -16,23 +23,74 @@ function include(filename) {
 }
 
 function getDashboardData() {
-  const stocksResult = getStockData();
-  const trackingRows = getTrackingRows();
+  const cache = CacheService.getScriptCache();
+  const cached = readDashboardCache(cache);
+
+  if (cached) return cached;
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const stocksResult = getStockData(ss);
+  const trackingRows = getTrackingRows(ss);
   const dailyTracking = aggregateTrackingRowsByDate(trackingRows);
 
-  return {
+  const result = {
     stocks: stocksResult.stocks,
     summary: stocksResult.summary,
-    goals: getGoalPlanData(),
+    goals: getGoalPlanData(ss),
     trackingRows: trackingRows,
     dailyTracking: dailyTracking,
     dod: calculateDoD(dailyTracking),
-    monthlySummary: calculateMonthlySummary(dailyTracking)
+    monthlySummary: calculateMonthlySummary(dailyTracking),
+    generatedAt: new Date().toISOString()
   };
+
+  writeDashboardCache(cache, result);
+  return result;
 }
 
-function getGoalPlanData() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+function getDashboardApiResponse(callback) {
+  if (!callback || !/^[A-Za-z_$][0-9A-Za-z_$]*$/.test(callback)) {
+    return ContentService
+      .createTextOutput(JSON.stringify(getDashboardData()))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  return ContentService
+    .createTextOutput(callback + '(' + JSON.stringify(getDashboardData()) + ');')
+    .setMimeType(ContentService.MimeType.JAVASCRIPT);
+}
+
+function readDashboardCache(cache) {
+  const count = Number(cache.get(DASHBOARD_CACHE_KEY + ':count'));
+  if (!count) return null;
+
+  const keys = Array.from({ length: count }, (_, index) => DASHBOARD_CACHE_KEY + ':' + index);
+  const chunks = cache.getAll(keys);
+  if (keys.some(key => !chunks[key])) return null;
+
+  try {
+    return JSON.parse(keys.map(key => chunks[key]).join(''));
+  } catch (error) {
+    return null;
+  }
+}
+
+function writeDashboardCache(cache, data) {
+  const json = JSON.stringify(data);
+  const chunks = {};
+  let count = 0;
+
+  for (let offset = 0; offset < json.length; offset += DASHBOARD_CACHE_CHUNK_SIZE) {
+    chunks[DASHBOARD_CACHE_KEY + ':' + count] = json.slice(offset, offset + DASHBOARD_CACHE_CHUNK_SIZE);
+    count += 1;
+  }
+
+  cache.putAll(chunks, DASHBOARD_CACHE_SECONDS);
+  cache.put(DASHBOARD_CACHE_KEY + ':count', String(count), DASHBOARD_CACHE_SECONDS);
+}
+
+function getGoalPlanData(ss) {
+  ss = ss || SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(GOAL_SHEET_NAME);
 
   if (!sheet) {
@@ -50,15 +108,16 @@ function getGoalPlanData() {
   };
 }
 
-function getStockData() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+function getStockData(ss) {
+  ss = ss || SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_NAME);
 
   if (!sheet) {
     throw new Error(`Sheet "${SHEET_NAME}" not found`);
   }
 
-  const values = sheet.getDataRange().getValues();
+  const lastRow = sheet.getLastRow();
+  const values = lastRow ? sheet.getRange(1, 1, lastRow, 14).getValues() : [];
 
   if (values.length <= 1) {
     return {
@@ -98,21 +157,20 @@ function getDailyTrackingData() {
   return aggregateTrackingRowsByDate(getTrackingRows());
 }
 
-function getTrackingRows() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+function getTrackingRows(ss) {
+  ss = ss || SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(TRACKING_SHEET_NAME);
 
   if (!sheet) {
     throw new Error(`Sheet "${TRACKING_SHEET_NAME}" not found`);
   }
 
-  const values = sheet.getDataRange().getValues();
-
-  if (values.length <= 1) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
     return [];
   }
 
-  return values.slice(1)
+  return sheet.getRange(2, 1, lastRow - 1, 15).getValues()
     .filter(row => row[0] !== '')
     .map(row => {
       const dateValue = row[TRACKING_TIMESTAMP_COLUMN_INDEX] || row[13]; // Column O, fallback for older Column N data
